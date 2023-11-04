@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.ConstrainedExecution;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class Program
 {//leer la informacion como una matriz de datos
@@ -182,8 +183,10 @@ public class Program
                 else
                 {
                     db[i, 7] = "Inactivo";//cambiamos el estatus de acuerdo a la posicion de la cabecera ESTATUS
-                    GuardarDatosEstatus(db, path);
+                    GuardarDatosEnBD(db, path);
                     Console.WriteLine("Estatus cambiado para el usuario " + db[i,0]);
+                    string registroHistorico = "Baja Cuentahabiente ---- ID_Cuentahabiente: " + idUsuario;//creamos lo que vamos a guardar en el historico
+                    GuardarHistorial(registroHistorico);//lo guardamos en historico
                 }
                 break;
             }
@@ -219,7 +222,7 @@ public class Program
                     if (respuesta == "1")
                     {
                         db[i, 2] = "0";//cambiamos el saldo a cero de acuerdo a la posicion de la cabecera SALDO
-                        GuardarDatosEstatus(db, path);
+                        GuardarDatosEnBD(db, path);
                         Console.WriteLine("Saldo reembolsado del usuario " + db[i, 0]);
                     }
                     break;
@@ -264,8 +267,10 @@ public class Program
                     {
                         int nuevo = saldo + Convert.ToInt32(nuevosaldo);
                         db[i, 2] = Convert.ToString(nuevo);//Sumamos el saldo anterior mas la recarga nueva
-                        GuardarDatosEstatus(db, path);
+                        GuardarDatosEnBD(db, path);
                         Console.WriteLine("Se recargo al usuario " + db[i, 0]);
+                        string registroHistorico = "ID_usuario: " + idUsuario + " ----- Movimiento: Recarga ----- Monto: " + nuevosaldo;
+                        GuardarHistorial(registroHistorico);
                     }
                     break;
                 }
@@ -276,7 +281,7 @@ public class Program
             Console.WriteLine("No existe el usuario con ese Id");
         }
     }
-    public static void GuardarDatosEstatus(string[,] db, string path)//guardamos toda la base de datos con los datos actualizados
+    public static void GuardarDatosEnBD(string[,] db, string path)//guardamos toda la base de datos con los datos actualizados
     {
         StreamWriter mod = File.CreateText(path);
         for (int i = 0; i < db.GetLength(0) - 1; i++)
@@ -371,7 +376,7 @@ public class Program
                         saldoUsuario = 0;//como no nos alcanzaba con el puro saldo, entonces se ocupo todo el saldo y lo ponemos en cero
                         
                     }
-                    GuardarDatosCompra(idUsuario, Convert.ToString(saldoUsuario), Convert.ToString(puntosFinales), registroCompra, nombreJuego, path);//guardamos toda la informacion de la compra
+                    GuardarDatosCompra(idUsuario, Convert.ToString(saldoUsuario), Convert.ToString(puntosFinales), registroCompra, nombreJuego, Convert.ToString(precioJuego), path);//guardamos toda la informacion de la compra
                 }
                 else
                 {
@@ -390,7 +395,7 @@ public class Program
         }
     }
 
-    public static void GuardarDatosCompra(string idUsuario, string saldoNuevo, string puntosNuevos, string registroCompra, string nombreJuego, string path) {
+    public static void GuardarDatosCompra(string idUsuario, string saldoNuevo, string puntosNuevos, string registroCompra, string nombreJuego, string precioJuego, string path) {
         StreamReader sr = File.OpenText(path);//leemos el archivo de la BD
         string contenido = sr.ReadToEnd();//asignmos los valores a una nueva variable "contenido"
         sr.Close();
@@ -423,10 +428,13 @@ public class Program
                 string separadorCatalogo = catalogoArray[0].Length > 1 ? "??" : "";//validamos si ya tenemos juegos, para poder agregar el separador
                 string concatenarCatalogo = catalogoArray[0] + separadorCatalogo + nombreJuego + "]";//hacemos el nuevo string de catalogo
                 db[i, 6] = concatenarCatalogo;//asignamos el catalogo
-                GuardarDatosEstatus(db, path);//guardamos la nueva informacion
+                GuardarDatosEnBD(db, path);//guardamos la nueva informacion
                 break;
             }
         }
+
+        string registroHistorico = "ID_usuario: " + idUsuario + " ----- Movimiento: Compra(" + nombreJuego + ") ----- Monto: " + precioJuego;
+        GuardarHistorial(registroHistorico);
     }
     public static bool ValidarSiYaSeCompro(string idJuego, string idUsuario, string pathUsuarios)
     {
@@ -488,5 +496,15 @@ public class Program
             return "";
         }
         return "";
+    }
+
+    public static void GuardarHistorial(string registro)
+    {
+        string path = "Historico.txt";
+        StreamWriter mod = new StreamWriter(path, true);//obtenemos la BD y lo que escribamos se agrega a la ultima linea
+
+        mod.Write(registro);
+        mod.Write('\n');//agregamos al final un salto de linea para que sea para el siguiente registro
+        mod.Close();//cerramos el archivo
     }
 }
