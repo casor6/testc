@@ -45,6 +45,9 @@ public class Program
                 case "6":
                     ComprarJuego(path, pathJuegos);
                     break;
+                case "7":
+                    ImprimirHistorial();
+                    break;
                 case "Q":
                     Console.Write("Adios");
                     finalizado = true;
@@ -80,12 +83,8 @@ public class Program
             datos[6] = "[]";//posicion de los juegos comprados, un arreglo vacio por que es nuevo
             datos[7] = "Activo";//estatus del usuario, Activo por que es nuevo
 
-            StreamReader sr = File.OpenText(path);//leemos el archivo de la BD
-            string contenido = sr.ReadToEnd();//asiganmos los valores a una nueva variable "contenido"
-            sr.Close();
-            string[] filas = contenido.Split('\n'); //dividimos por salto de lineas, para saber cuantos registros existen en la BD
-            string[,] db = new string[filas.Length, 8];//creamos un arreglo bidimensional con el tamaño de los reggistros que existen y las cabeceras(idusuario, nombre, saldo, etc)
             GuardarDatosUsuario(datos, path);
+            //Guardar historico de creacion de usuario
         }
         else
         {
@@ -359,7 +358,7 @@ public class Program
                 {
                     string nombreJuego = ObtenerDatoEspecifico(idJuego, 1, pathJuegos, "juegos");//obtenemos el nombre del juego para guardarlo en los registros de compra
                     DateTime fecha = DateTime.Now;
-                    string formatoFecha = fecha.ToString("dd/MM/yyyy");//obtenemos la fecha de compra
+                    string formatoFecha = fecha.ToString("dd/MM/yyyy HH:mm:ss");//obtenemos la fecha de compra con tiempo
                     string registroCompra = idJuego + "-" + formatoFecha + "-" + precioJuego;//generamos el registro de la compra para que sea del formato idjuego-fecha-precio
                     int nuevosPuntos = precioJuego / 10;//calculamos los nuevos puntos por la compra que se va hacer. son el 10% de cada compra
                     int puntosFinales = puntosUsuario;
@@ -371,8 +370,8 @@ public class Program
                     else//si no nos alcanza con el puro saldo, gastaremos los puntos tambien
                     {
                         int faltante = precioJuego - saldoUsuario;//vemos cuanto es el faltante para poder pagarlo con los puntos
-                        int puntosUsados = (faltante - puntosASaldo) * 10;//vemos cuantos puntos son los que necesitamos para la compra
-                        puntosFinales = puntosUsuario - puntosUsados + nuevosPuntos;//restamos los puntos que necesitamos a los puntos que teniamos, ahi mismo sumamos los nuevos puntos por la compra
+                        int puntosUsados = faltante * 10;//vemos cuantos puntos son los que necesitamos para la compra, si el faltante eran 2 pesos, entonces significa que se ocupan 20 puntos
+                        puntosFinales = (puntosUsuario - puntosUsados) + nuevosPuntos;//restamos los puntos que necesitamos a los puntos que teniamos, ahi mismo sumamos los nuevos puntos por la compra
                         saldoUsuario = 0;//como no nos alcanzaba con el puro saldo, entonces se ocupo todo el saldo y lo ponemos en cero
                         
                     }
@@ -417,6 +416,12 @@ public class Program
                 db[i, 2] = Convert.ToString(saldoNuevo);//asignamos el nuevo saldo
                 db[i, 3] = Convert.ToString(puntosNuevos);//asignamos los nuevos puntos
 
+                //[]
+                //[J1-fecha-monto]
+                //]
+                //[J1-fecha-monto]
+                //[J1-fecha-monto??J2-fecha-monto]
+                //]
                 string comprasUsuario = ObtenerDatoEspecifico(idUsuario, 5, path, "usuarios");//obtenemos las compras
                 string[] comprasArray = comprasUsuario.Split("]");//quitamos el ultimo corchete de las compras, para poder agreggar el nuevo registro de compra
                 string separador = comprasArray[0].Length > 1 ? "??" : "";//validamos si ya tenemos comprar, para poder agregar el separador
@@ -501,10 +506,29 @@ public class Program
     public static void GuardarHistorial(string registro)
     {
         string path = "Historico.txt";
+        if (!File.Exists(path))//si no existe el archivo de usuarios, lo creamos aqui
+        {
+            Console.WriteLine("Archivo inexistente");
+            StreamWriter sw = File.CreateText(path);
+            sw.Close();
+            Console.WriteLine("Archivo Creado");
+        }
         StreamWriter mod = new StreamWriter(path, true);//obtenemos la BD y lo que escribamos se agrega a la ultima linea
 
         mod.Write(registro);
         mod.Write('\n');//agregamos al final un salto de linea para que sea para el siguiente registro
         mod.Close();//cerramos el archivo
+    }
+    public static void ImprimirHistorial()
+    {
+        string path = "Historico.txt";
+        StreamReader sr = File.OpenText(path);//leemos el archivo de la BD
+        string contenido = sr.ReadToEnd();//asignmos los valores a una nueva variable "contenido"
+        sr.Close();
+        string[] filas = contenido.Split('\n'); //dividimos por salto de lineas, para saber cuantos registros existen en la BD
+        for (int i = 0; i < filas.GetLength(0); i++)// recorremos los registros
+        {
+            Console.WriteLine(filas[i]);//imprimimos cada uno de los registros del historico
+        }
     }
 }
